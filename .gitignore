@@ -1,0 +1,7 @@
+/JobVacancyCollector/obj
+/JobVacancyCollector.Worker/obj
+/JobVacancyCollector.Worker/bin
+/JobVacancyCollector.Infrastructure/obj
+/JobVacancyCollector.Domain/obj
+/JobVacancyCollector.Application/obj
+/.vs
