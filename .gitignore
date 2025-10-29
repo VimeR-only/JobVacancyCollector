@@ -5,3 +5,7 @@
 /JobVacancyCollector.Domain/obj
 /JobVacancyCollector.Application/obj
 /.vs
+/JobVacancyCollector.Application/bin
+/JobVacancyCollector.Domain/bin
+/JobVacancyCollector.Infrastructure/bin
+/JobVacancyCollector/bin
