@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 {
-    internal interface IHtmlWorkUaParser
+    public interface IWorkUaParser
     {
     }
 }
