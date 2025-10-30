@@ -1,8 +1,11 @@
-
-using JobVacancyCollector.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+﻿
 using JobVacancyCollector.Application;
+using JobVacancyCollector.Application.Abstractions.Repositories;
+using JobVacancyCollector.Application.Abstractions.Scrapers;
+using JobVacancyCollector.Infrastructure.Data;
 using JobVacancyCollector.Infrastructure.Parsers.WorkUa;
+using JobVacancyCollector.Infrastructure.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace JobVacancyCollector
 {
@@ -13,7 +16,8 @@ namespace JobVacancyCollector
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-            //builder.Services.AddScoped(I)
+            builder.Services.AddScoped<IVacancyScraper, WorkUaParser>();
+            builder.Services.AddScoped<IVacancyRepository, VacancyRepository>();
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -31,24 +35,26 @@ namespace JobVacancyCollector
                 var services = scope.ServiceProvider;
                 try
                 {
-                    var dbContext = services.GetRequiredService<AppDbContext>();
+                    //var dbContext = services.GetRequiredService<AppDbContext>();
+                    //await dbContext.Database.MigrateAsync();
+                    //Console.WriteLine("Database migrations applied successfully.");
 
-                    await dbContext.Database.MigrateAsync();
+                    var scraper = services.GetRequiredService<IVacancyScraper>();
 
-                    Console.WriteLine("Database migrations applied successfully.");
+                    //var vacancies = await scraper.ScrapeAsync("Хмельницький", 1);
+                    await scraper.ScrapeNewVacanciesAsync("Хмельницький", 1);
+
+                    //var vacancyRepository = services.GetRequiredService<IVacancyRepository>();
+
+                    //await vacancyRepository.ClearAsync();
+                    //await vacancyRepository.AddRangeAsync(vacancies);
                 }
                 catch (Exception ex)
                 {
                     var logger = services.GetRequiredService<ILogger<Program>>();
-
-                    logger.LogError(ex, "An error occurred while migrating the database.");
+                    logger.LogError(ex, "An error occurred during startup (migration or scraping).");
                 }
             }
-
-            // Replace the incorrect instantiation of ILogger with dependency injection
-            var scraper = new WorkUaParser();
-
-            await scraper.ScrapeAsync();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

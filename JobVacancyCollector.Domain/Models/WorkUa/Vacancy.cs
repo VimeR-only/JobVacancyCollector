@@ -1,8 +1,10 @@
-﻿namespace JobVacancyCollector.Domain.Models
+﻿namespace JobVacancyCollector.Domain.Models.WorkUa
 {
     public class Vacancy
     {
         public int Id { get; set; }
+        public string SourceId { get; set; } = string.Empty;
+        public string SourceName { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Salary { get; set; } = string.Empty;
         public string SalaryNote { get; set; } = string.Empty;
