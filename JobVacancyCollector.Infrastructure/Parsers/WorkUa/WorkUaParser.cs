@@ -3,21 +3,11 @@ using AngleSharp.Dom;
 using JobVacancyCollector.Application.Abstractions.Repositories;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Domain.Models.WorkUa;
-using JobVacancyCollector.Infrastructure.Persistence.Repositories;
+using JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Spectre.Console;
-using System;
 using System.Collections.Concurrent;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection.Metadata;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 {
@@ -26,157 +16,21 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
         private readonly ILogger<WorkUaParser> _logger;
         private readonly IBrowsingContext _context;
         private readonly IVacancyRepository _vacancyRepository;
+        private readonly HtmlWorkUaParser _htmlWorkUaParser;
+
         private static readonly Random random = new Random();
         private static readonly ThreadLocal<Random> Rnd = new(() => random);
 
         public string SourceName { get; set; } = "Work.ua";
 
-        public WorkUaParser(ILogger<WorkUaParser> logger, IVacancyRepository vacancyRepository)
+        public WorkUaParser(ILogger<WorkUaParser> logger, IVacancyRepository vacancyRepository, HtmlWorkUaParser htmlWorkUaParser)
         {
             _logger = logger;
             _vacancyRepository = vacancyRepository;
+            _htmlWorkUaParser = htmlWorkUaParser;
 
             var config = Configuration.Default.WithDefaultLoader();
             _context = BrowsingContext.New(config);
-        }
-
-        private static string GetTitle(IDocument doc)
-        {
-            if (doc == null) return string.Empty;
-
-            var titleElement = doc.QuerySelector("#h1-name");
-
-            return titleElement?.TextContent.Trim() ?? "";
-        }
-
-        private static string GetSalary(IDocument doc, out string note)
-        {
-            note = "";
-
-            if ( doc == null) return string.Empty;
-
-            var salaryLi = doc.QuerySelectorAll("li.text-indent.no-style.mt-sm.mb-0")
-                        .FirstOrDefault(li => li.QuerySelector("span.glyphicon-hryvnia-fill") != null);
-
-            if (salaryLi == null) return string.Empty;
-
-            var salaryElement = salaryLi.QuerySelector("span.strong-500");
-            string salary = salaryElement?.TextContent.Trim() ?? "";
-
-            var salaryNoteElement = salaryLi.QuerySelector("span.text-default-7");
-            note = salaryNoteElement?.TextContent.Trim() ?? "";
-
-            return salary;
-        }
-
-        private static string GetCompany(IDocument doc, out string note)
-        {
-            note = "";
-
-            if (doc == null) return string.Empty;
-
-            var companyLi = doc.QuerySelectorAll("li.text-indent.no-style.mt-sm.mb-0")
-                                    .FirstOrDefault(li => li.QuerySelector("span.glyphicon-company") != null);
-            if (companyLi == null) return string.Empty;
-
-            var companyElement = companyLi.QuerySelector("span.strong-500");
-            string company = companyElement?.TextContent.Trim() ?? "";
-
-            var companyNoteElement = companyLi.QuerySelector("span.text-default-7");
-            note = companyNoteElement?.TextContent.Trim() ?? "";
-
-            return company;
-        }
-
-        private static string GetLocation(IDocument doc, out string city)
-        {
-            city = "";
-
-            if (doc == null) return string.Empty;
-
-            var locationLi = doc.QuerySelectorAll("li.text-indent.no-style.mt-sm.mb-0")
-                        .FirstOrDefault(li => li.QuerySelector("span.glyphicon-map-marker") != null);
-
-            if (locationLi == null) return string.Empty;
-
-            string location = locationLi.ChildNodes
-             .Where(n => n.NodeType == AngleSharp.Dom.NodeType.Text)
-             .Select(n => n.TextContent.Trim())
-             .Where(t => !string.IsNullOrEmpty(t))
-             .FirstOrDefault() ?? "";
-
-            city = location.Split(",")[0];
-
-            return location;
-        }
-
-        private static string GetContact(IDocument doc, out string name)
-        {
-            name = "";
-
-            if (doc == null) return string.Empty;
-
-            var contactLi = doc.QuerySelectorAll("li.text-indent.no-style.mt-sm.mb-0")
-                                    .FirstOrDefault(li => li.QuerySelector("span.glyphicon-phone") != null);
-
-            if (contactLi == null) return string.Empty;
-
-            var nameElement = contactLi.QuerySelector(".mr-sm");
-            name = nameElement?.TextContent.Trim() ?? "";
-
-            var phoneElement = doc.QuerySelector("span#contact-phone a.js-get-phone.js-get-phone.sendr.hidden");
-            string phone = phoneElement?.GetAttribute("href")?.Replace("tel:", "").Trim() ?? "";
-
-            return phone;
-        }
-
-        private static string GetConditions(IDocument doc)
-        {
-            if (doc == null) return string.Empty;
-
-            var conditionsLi = doc.QuerySelectorAll("li.text-indent.no-style.mt-sm.mb-0")
-                                            .FirstOrDefault(li => li.QuerySelector("span.glyphicon-tick.text-default.glyphicon-large") != null);
-
-            if (conditionsLi == null) return string.Empty;
-
-            string conditions = string.Join(" ", conditionsLi.ChildNodes
-                .Where(n => n.NodeType == AngleSharp.Dom.NodeType.Text)
-                .Select(n => n.TextContent.Trim())
-                .Where(t => !string.IsNullOrEmpty(t)));
-
-            return conditions;
-        }
-
-        private static string GetLanguage(IDocument doc)
-        {
-            if (doc == null) return string.Empty;
-
-            var languageLi = doc.QuerySelectorAll("li.text-indent.no-style.mt-sm.mb-0")
-                        .FirstOrDefault(li => li.QuerySelector("span.glyphicon-language") != null);
-
-            if (languageLi == null) return string.Empty;
-
-            string language = string.Join(" ", languageLi.ChildNodes
-                .Where(n => n.NodeType == AngleSharp.Dom.NodeType.Text)
-                .Select(n => n.TextContent.Trim())
-                .Where(t => !string.IsNullOrEmpty(t)));
-
-            return language;
-        }
-
-        private static string GetDescription(IDocument doc)
-        {
-            if (doc == null) return string.Empty;
-
-            var descriptionDiv = doc.QuerySelector("div#job-description");
-
-            if (descriptionDiv == null) return string.Empty;
-
-            string description = System.Text.RegularExpressions.Regex
-                    .Replace(descriptionDiv.TextContent, @"\s+", " ")
-                    .Trim();
-
-            return description;
         }
 
         private static string ToLatinCity(string city)
@@ -287,14 +141,14 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
         {
             if (document == null) return null;
 
-            string title = GetTitle(document);
-            string salary = GetSalary(document, out var salaryNote);
-            string company = GetCompany(document, out var companyNote);
-            string location = GetLocation(document, out var city);
-            string phone = GetContact(document, out var name);
-            string conditions = GetConditions(document);
-            string language = GetLanguage(document);
-            string description = GetDescription(document);
+            string title = _htmlWorkUaParser.GetTitle(document);
+            string salary = _htmlWorkUaParser.GetSalary(document, out var salaryNote);
+            string company = _htmlWorkUaParser.GetCompany(document, out var companyNote);
+            string location = _htmlWorkUaParser.GetLocation(document, out var city);
+            string phone = _htmlWorkUaParser.GetContact(document, out var name);
+            string conditions = _htmlWorkUaParser.GetConditions(document);
+            string language = _htmlWorkUaParser.GetLanguage(document);
+            string description = _htmlWorkUaParser.GetDescription(document);
 
             var vacancy = new Vacancy {
                 SourceName = SourceName,
@@ -349,6 +203,8 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
                         if (vacancy != null)
                         {
+                            vacancy.SourceId = url.Split("/")[4];
+
                             vacancies.Add(vacancy);
 
                             _logger.LogInformation($"Вакансія вставлена {currentId} з {total}");
