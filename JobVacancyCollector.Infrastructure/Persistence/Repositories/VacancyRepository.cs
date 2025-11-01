@@ -40,8 +40,7 @@ namespace JobVacancyCollector.Infrastructure.Persistence.Repositories
 
         public async Task<bool> ClearAsync()
         {
-            _context.Vacancies.RemoveRange(_context.Vacancies);
-            await _context.SaveChangesAsync();
+            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"Vacancies\" RESTART IDENTITY;");
 
             return true;
         }
