@@ -287,5 +287,34 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
             return vacancies.ToList();
         }
+
+        public async Task<List<string>> ScrapeNotExistentVacanciesAsync(string? cityOrOption = "Вся Україна", int? maxPage = 1, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var currentUrls = await ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
+                var currentIds = currentUrls
+                    .Select(url => url.Split('/', StringSplitOptions.RemoveEmptyEntries).Last())
+                    .ToHashSet();
+
+                var dbIds = (await _vacancyRepository.GetAllIdsAsync()).ToHashSet();
+                var removedIds = dbIds.Except(currentIds).ToList();
+
+                if (removedIds.Count == 0)
+                {
+                    _logger.LogInformation($"Загальна кількість не актуальних вакансій: {removedIds.Count}");
+
+                    return new List<string>();
+                }
+
+                return removedIds;
+            }
+            catch( Exception ex )
+            {
+                _logger.LogError(ex, "Error parsing Work.ua not existent vacancies");
+            }
+
+            return new List<string>();
+        }
     }
 }

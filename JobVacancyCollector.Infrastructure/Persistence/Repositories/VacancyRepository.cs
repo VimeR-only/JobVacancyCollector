@@ -14,7 +14,7 @@ namespace JobVacancyCollector.Infrastructure.Persistence.Repositories
             _context = context;
         }
 
-        public async Task AddRangeAsync(IEnumerable<Vacancy> vacancies)
+        public async Task<bool> AddRangeAsync(IEnumerable<Vacancy> vacancies)
         {
             var newVacancies = new List<Vacancy>();
 
@@ -31,13 +31,19 @@ namespace JobVacancyCollector.Infrastructure.Persistence.Repositories
             {
                 await _context.Vacancies.AddRangeAsync(newVacancies);
                 await _context.SaveChangesAsync();
+
+                return true;
             }
+
+            return false;
         }
 
-        public async Task ClearAsync()
+        public async Task<bool> ClearAsync()
         {
             _context.Vacancies.RemoveRange(_context.Vacancies);
             await _context.SaveChangesAsync();
+
+            return true;
         }
 
         public async Task<bool> ExistsAsync(string? sourceId = null, string? sourceName = null)
@@ -52,6 +58,31 @@ namespace JobVacancyCollector.Infrastructure.Persistence.Repositories
             return await _context.Vacancies
                 .Select(v => v.SourceId)
                 .ToListAsync();
+        }
+
+        public async Task<bool> RemoveIdAsync(string sourceId)
+        {
+            var vacancy = await _context.Vacancies.FirstOrDefaultAsync(v => v.SourceId == sourceId);
+
+            if (vacancy != null)
+            {
+                _context.Vacancies.Remove(vacancy);
+                await _context.SaveChangesAsync();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        public async Task<bool> RemoveRangeAsync(IEnumerable<string> sourceIds)
+        {
+            var vacancies = _context.Vacancies.Where(v => sourceIds.Contains(v.SourceId));
+
+            _context.Vacancies.RemoveRange(vacancies);
+            await _context.SaveChangesAsync();
+
+            return true;
         }
     }
 }
