@@ -126,7 +126,7 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
                     }
                 }
 
-                _logger.LogInformation($"Сторінка {page} опрацьована. Знайдено вакансій: {cards.Length}");
+                _logger.LogInformation($"Page {page} processed. Jobs found: {cards.Length}");
 
                 page++;
 
@@ -177,7 +177,7 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
             {
                 var urls = await ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
 
-                _logger.LogInformation($"Загальна кількість вакансій: {urls.Count}");
+                _logger.LogInformation($"Total number of vacancies: {urls.Count}");
 
                 var options = new ParallelOptions
                 {
@@ -207,7 +207,7 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
                             vacancies.Add(vacancy);
 
-                            _logger.LogInformation($"Вакансія вставлена {currentId} з {total}");
+                            _logger.LogInformation($"Job posted {currentId} з {total}");
                         }
 
                         int done = Interlocked.Increment(ref processed);
@@ -217,11 +217,11 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Помилка обробки URL {Url}", url);
+                        _logger.LogError(ex, "URL processing error {Url}", url);
                     }
                 });
 
-                _logger.LogInformation($"Загальна кількість вакансій в ліст: {vacancies.Count}");
+                _logger.LogInformation($"Total number of vacancies in the list: {vacancies.Count}");
 
                 progress?.Report(100);
             }
@@ -271,12 +271,12 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
                         {
                             vacancies.Add(vacancy);
 
-                            Console.WriteLine($"Найдена нова вакансія {id} ");
+                            Console.WriteLine($"New vacancy found {id} ");
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Помилка обробки URL {Url}", id);
+                        _logger.LogError(ex, "URL processing error {Url}", id);
                     }
                 });
             }
@@ -302,7 +302,7 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
                 if (removedIds.Count == 0)
                 {
-                    _logger.LogInformation($"Загальна кількість не актуальних вакансій: {removedIds.Count}");
+                    _logger.LogInformation($"Total number of irrelevant vacancies: {removedIds.Count}");
 
                     return new List<string>();
                 }
