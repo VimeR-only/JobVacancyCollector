@@ -1,7 +1,9 @@
-﻿using JobVacancyCollector.Application.Abstractions.Repositories;
+﻿using ClosedXML.Excel;
+using JobVacancyCollector.Application.Abstractions.Repositories;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Application.Interfaces;
 using JobVacancyCollector.Domain.Models.WorkUa;
+using ClosedXML.Excel;
 
 namespace JobVacancyCollector.Application.Services
 {
@@ -18,7 +20,7 @@ namespace JobVacancyCollector.Application.Services
         public async Task<bool> ScrapeAndSaveAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
         {
             var newVacancies = await _vacancyScraper.ScrapeAsync(city, maxPage, cancellationToken);
-            
+
             if (newVacancies.Count() == 0) return false;
 
             return await _vacancyRepository.AddRangeAsync(newVacancies);
@@ -80,6 +82,55 @@ namespace JobVacancyCollector.Application.Services
         public async Task ClearDb()
         {
             await _vacancyRepository.ClearAsync();
+        }
+
+        public async Task<MemoryStream> ExportExcel() //Temporarily added for github users.I don't need it, but it will be made better later.
+        {
+            var allVacancys = await _vacancyRepository.GetAllAsync();
+
+            using var workbook = new XLWorkbook();
+            var ws = workbook.Worksheets.Add("Vacancies");
+
+            var stream = new MemoryStream();
+
+            ws.Cell(1, 1).Value = "SourceId";
+            ws.Cell(1, 2).Value = "SourceName";
+            ws.Cell(1, 3).Value = "Title";
+            ws.Cell(1, 4).Value = "Salary";
+            ws.Cell(1, 5).Value = "SalaryNote";
+            ws.Cell(1, 6).Value = "Company";
+            ws.Cell(1, 7).Value = "CompanyNote";
+            ws.Cell(1, 8).Value = "City";
+            ws.Cell(1, 9).Value = "Location";
+            ws.Cell(1, 10).Value = "Phone";
+            ws.Cell(1, 11).Value = "NameContact";
+            ws.Cell(1, 12).Value = "Conditions";
+            ws.Cell(1, 13).Value = "Language";
+            ws.Cell(1, 14).Value = "Description";
+
+            for (int i = 0; i < allVacancys.Count(); i++)
+            {
+                var v = allVacancys.ElementAt(i);
+
+                ws.Cell(i + 2, 1).Value = v.SourceId;
+                ws.Cell(i + 2, 2).Value = v.SourceName;
+                ws.Cell(i + 2, 3).Value = v.Title;
+                ws.Cell(i + 2, 4).Value = v.Salary;
+                ws.Cell(i + 2, 5).Value = v.SalaryNote;
+                ws.Cell(i + 2, 6).Value = v.Company;
+                ws.Cell(i + 2, 7).Value = v.CompanyNote;
+                ws.Cell(i + 2, 8).Value = v.City;
+                ws.Cell(i + 2, 9).Value = v.Location;
+                ws.Cell(i + 2, 10).Value = v.Phone;
+                ws.Cell(i + 2, 11).Value = v.NameContact;
+                ws.Cell(i + 2, 12).Value = v.Conditions;
+                ws.Cell(i + 2, 13).Value = v.Language;
+                ws.Cell(i + 2, 14).Value = v.Description;
+            }
+            workbook.SaveAs(stream);
+            stream.Position = 0;
+
+            return stream;
         }
     }
 }

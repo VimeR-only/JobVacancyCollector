@@ -1,5 +1,6 @@
 ﻿using JobVacancyCollector.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.IO;
 
 namespace JobVacancyCollector.Controllers
 {
@@ -41,6 +42,16 @@ namespace JobVacancyCollector.Controllers
             await _vacancyService.ClearDb();
             
             return Ok();
+        }
+
+        [HttpGet("export")]
+        public async Task<ActionResult> Export() //Temporarily added for github users.I don't need it, but it will be made better later.
+        {
+            var stream = await _vacancyService.ExportExcel();
+            
+            return File(stream,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "vacancies.xlsx");
         }
     }
 }

@@ -1,4 +1,7 @@
-﻿using JobVacancyCollector.Domain.Models.WorkUa;
+﻿using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Spreadsheet;
+using JobVacancyCollector.Domain.Models.WorkUa;
+using System.IO;
 
 namespace JobVacancyCollector.Application.Interfaces
 {
@@ -10,5 +13,6 @@ namespace JobVacancyCollector.Application.Interfaces
         Task<IEnumerable<Vacancy>> GetAllAsync();
         Task<Vacancy?> GetByIdAsync(string id);
         Task ClearDb();
+        Task<MemoryStream> ExportExcel(); //Temporarily added for github users.I don't need it, but it will be made better later.
     }
 }
