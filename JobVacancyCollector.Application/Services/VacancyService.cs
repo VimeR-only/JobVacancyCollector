@@ -15,7 +15,7 @@ namespace JobVacancyCollector.Application.Services
             _vacancyScraper = vacancyScraper;
         }
 
-        public async Task<bool> ScrapeAndSaveAsync(string city, int maxPage, CancellationToken cancellationToken = default)
+        public async Task<bool> ScrapeAndSaveAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
         {
             var newVacancies = await _vacancyScraper.ScrapeAsync(city, maxPage, cancellationToken);
             
@@ -24,7 +24,7 @@ namespace JobVacancyCollector.Application.Services
             return await _vacancyRepository.AddRangeAsync(newVacancies);
         }
 
-        public async Task<bool> ScrapeNewAndSaveAsync(string city, int maxPage, CancellationToken cancellationToken = default)
+        public async Task<bool> ScrapeNewAndSaveAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
         {
             var urls = await _vacancyScraper.ScraperUrlAsync(city, maxPage, cancellationToken);
 
@@ -49,7 +49,7 @@ namespace JobVacancyCollector.Application.Services
             return await _vacancyRepository.AddRangeAsync(newVacancies);
         }
 
-        public async Task<bool> ScrapeNotExistentDeleteAsync(string city, int maxPage, CancellationToken cancellationToken = default)
+        public async Task<bool> ScrapeNotExistentDeleteAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
         {
             var currentUrls = await _vacancyScraper.ScraperUrlAsync(city, maxPage, cancellationToken);
 

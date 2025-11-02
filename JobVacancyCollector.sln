@@ -1,17 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36301.6 d17.14
+VisualStudioVersion = 17.14.36301.6
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobVacancyCollector", "JobVacancyCollector\JobVacancyCollector.csproj", "{945A4CA7-1184-4795-9CA4-96A667E9525D}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobVacancyCollector.Worker", "JobVacancyCollector.Worker\JobVacancyCollector.Worker.csproj", "{43FEDC1F-5D23-4C01-9EBB-E92FACB932DF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobVacancyCollector.Application", "JobVacancyCollector.Application\JobVacancyCollector.Application.csproj", "{99957D2D-FF89-46C9-8D39-7882463A2286}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobVacancyCollector.Domain", "JobVacancyCollector.Domain\JobVacancyCollector.Domain.csproj", "{F43ACF44-ED3D-41AD-9567-3C97B2A98099}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobVacancyCollector.Infrastructure", "JobVacancyCollector.Infrastructure\JobVacancyCollector.Infrastructure.csproj", "{F811A5D1-CC25-4D13-89A7-A41F5B3E50BD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobVacancyCollector.Worker", "JobVacancyCollector.Worker\JobVacancyCollector.Worker.csproj", "{472CC759-D15E-3D0F-AC8E-0C34980172F5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,6 @@ Global
 		{945A4CA7-1184-4795-9CA4-96A667E9525D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{945A4CA7-1184-4795-9CA4-96A667E9525D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{945A4CA7-1184-4795-9CA4-96A667E9525D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{43FEDC1F-5D23-4C01-9EBB-E92FACB932DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{43FEDC1F-5D23-4C01-9EBB-E92FACB932DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{43FEDC1F-5D23-4C01-9EBB-E92FACB932DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{43FEDC1F-5D23-4C01-9EBB-E92FACB932DF}.Release|Any CPU.Build.0 = Release|Any CPU
 		{99957D2D-FF89-46C9-8D39-7882463A2286}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{99957D2D-FF89-46C9-8D39-7882463A2286}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{99957D2D-FF89-46C9-8D39-7882463A2286}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -39,6 +35,10 @@ Global
 		{F811A5D1-CC25-4D13-89A7-A41F5B3E50BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F811A5D1-CC25-4D13-89A7-A41F5B3E50BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F811A5D1-CC25-4D13-89A7-A41F5B3E50BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{472CC759-D15E-3D0F-AC8E-0C34980172F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{472CC759-D15E-3D0F-AC8E-0C34980172F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{472CC759-D15E-3D0F-AC8E-0C34980172F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{472CC759-D15E-3D0F-AC8E-0C34980172F5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

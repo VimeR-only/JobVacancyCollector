@@ -25,9 +25,9 @@ namespace JobVacancyCollector.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> ScrapeVacancy(string cyti, int maxPage)
+        public async Task<IActionResult> ScrapeVacancy(string? city, int? maxPage)
         {
-            var status = await _vacancyService.ScrapeAndSaveAsync(cyti, maxPage);
+            var status = await _vacancyService.ScrapeAndSaveAsync(city, maxPage);
 
             if (!status) return NotFound();
 
