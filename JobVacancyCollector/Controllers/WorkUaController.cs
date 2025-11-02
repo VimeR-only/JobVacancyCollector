@@ -1,15 +1,46 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using JobVacancyCollector.Application.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 
 namespace JobVacancyCollector.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class WorkUaController : ControllerBase
+    public class VacancyController : ControllerBase
     {
-        //[HttpGet]
-        //public IActionResult GetHtml()
-        //{
+        private readonly IVacancyService _vacancyService;
 
-        //}
+        public VacancyController(IVacancyService vacancyService)
+        {
+            _vacancyService = vacancyService;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            var vacancys = await _vacancyService.GetAllAsync();
+
+            if (vacancys == null) return NotFound();
+
+            return Ok(vacancys);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ScrapeVacancy(string cyti, int maxPage)
+        {
+            var status = await _vacancyService.ScrapeAndSaveAsync(cyti, maxPage);
+
+            if (!status) return NotFound();
+
+            return Ok(status);
+        }
+
+
+        [HttpPost("clear-db")]
+        public async Task<ActionResult> ClearDb()
+        {
+            await _vacancyService.ClearDb();
+            
+            return Ok();
+        }
     }
 }

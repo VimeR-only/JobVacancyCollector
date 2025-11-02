@@ -83,5 +83,15 @@ namespace JobVacancyCollector.Infrastructure.Persistence.Repositories
 
             return true;
         }
+
+        public async Task<IEnumerable<Vacancy>> GetAllAsync()
+        {
+            return await _context.Vacancies.ToListAsync();
+        }
+
+        public async Task<Vacancy?> GetByIdAsync(string id)
+        {
+            return await _context.Vacancies.FirstOrDefaultAsync(v => v.SourceId == id);
+        }
     }
 }

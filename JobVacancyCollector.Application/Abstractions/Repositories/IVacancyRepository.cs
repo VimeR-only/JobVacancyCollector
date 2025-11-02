@@ -10,5 +10,7 @@ namespace JobVacancyCollector.Application.Abstractions.Repositories
         Task<IEnumerable<string>> GetAllIdsAsync();
         Task<bool> RemoveIdAsync(string sourceId);
         Task<bool> RemoveRangeAsync(IEnumerable<string> sourceIds);
+        Task<IEnumerable<Vacancy>> GetAllAsync();
+        Task<Vacancy?> GetByIdAsync(string id);
     }
 }

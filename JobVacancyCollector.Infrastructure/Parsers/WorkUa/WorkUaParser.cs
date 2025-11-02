@@ -1,11 +1,9 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
-using JobVacancyCollector.Application.Abstractions.Repositories;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Domain.Models.WorkUa;
 using JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html;
 using Microsoft.Extensions.Logging;
-using Spectre.Console;
 using System.Collections.Concurrent;
 using System.Text;
 
@@ -15,7 +13,6 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
     {
         private readonly ILogger<WorkUaParser> _logger;
         private readonly IBrowsingContext _context;
-        private readonly IVacancyRepository _vacancyRepository;
         private readonly HtmlWorkUaParser _htmlWorkUaParser;
 
         private static readonly Random random = new Random();
@@ -23,10 +20,9 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
         public string SourceName { get; set; } = "Work.ua";
 
-        public WorkUaParser(ILogger<WorkUaParser> logger, IVacancyRepository vacancyRepository, HtmlWorkUaParser htmlWorkUaParser)
+        public WorkUaParser(ILogger<WorkUaParser> logger, HtmlWorkUaParser htmlWorkUaParser)
         {
             _logger = logger;
-            _vacancyRepository = vacancyRepository;
             _htmlWorkUaParser = htmlWorkUaParser;
 
             var config = Configuration.Default.WithDefaultLoader();
@@ -83,7 +79,39 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
             return result.ToString().ToLower();
         }
 
-        private async Task<List<string>> ScraperUrlAsync(string? cityOrOption = "Вся Україна", int? maxPage = null, CancellationToken cancellationToken = default)
+        private Vacancy? HtmlVacancyPars(IDocument document)
+        {
+            if (document == null) return null;
+
+            string title = _htmlWorkUaParser.GetTitle(document);
+            string salary = _htmlWorkUaParser.GetSalary(document, out var salaryNote);
+            string company = _htmlWorkUaParser.GetCompany(document, out var companyNote);
+            string location = _htmlWorkUaParser.GetLocation(document, out var city);
+            string phone = _htmlWorkUaParser.GetContact(document, out var name);
+            string conditions = _htmlWorkUaParser.GetConditions(document);
+            string language = _htmlWorkUaParser.GetLanguage(document);
+            string description = _htmlWorkUaParser.GetDescription(document);
+
+            var vacancy = new Vacancy {
+                SourceName = SourceName,
+                Title = title,
+                Salary = salary,
+                SalaryNote = salaryNote,
+                Company = company,
+                CompanyNote = companyNote,
+                Location = location,
+                City = city,
+                Phone = phone,
+                NameContact = name,
+                Conditions = conditions,
+                Language = language,
+                Description = description,
+            };
+
+            return vacancy;
+        }
+        
+        public async Task<List<string>> ScraperUrlAsync(string? cityOrOption = "Вся Україна", int? maxPage = null, CancellationToken cancellationToken = default)
         {
             List<string> urls = new List<string>();
 
@@ -137,47 +165,13 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
             return urls;
         }
 
-        private Vacancy? HtmlVacancyPars(IDocument document)
-        {
-            if (document == null) return null;
-
-            string title = _htmlWorkUaParser.GetTitle(document);
-            string salary = _htmlWorkUaParser.GetSalary(document, out var salaryNote);
-            string company = _htmlWorkUaParser.GetCompany(document, out var companyNote);
-            string location = _htmlWorkUaParser.GetLocation(document, out var city);
-            string phone = _htmlWorkUaParser.GetContact(document, out var name);
-            string conditions = _htmlWorkUaParser.GetConditions(document);
-            string language = _htmlWorkUaParser.GetLanguage(document);
-            string description = _htmlWorkUaParser.GetDescription(document);
-
-            var vacancy = new Vacancy {
-                SourceName = SourceName,
-                Title = title,
-                Salary = salary,
-                SalaryNote = salaryNote,
-                Company = company,
-                CompanyNote = companyNote,
-                Location = location,
-                City = city,
-                Phone = phone,
-                NameContact = name,
-                Conditions = conditions,
-                Language = language,
-                Description = description,
-            };
-
-            return vacancy;
-        }
-
-        public async Task<IEnumerable<Vacancy>> ScrapeAsync(string? cityOrOption = "Вся Україна", int? maxPage = null, CancellationToken cancellationToken = default, IProgress<int>? progress = null)
+        public async Task<IEnumerable<Vacancy>> ScrapeDetailsAsync(IEnumerable<string> urls, CancellationToken cancellationToken = default)
         {
             var vacancies = new ConcurrentBag<Vacancy>();
 
             try
             {
-                var urls = await ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
-
-                _logger.LogInformation($"Total number of vacancies: {urls.Count}");
+                _logger.LogInformation($"Total number of vacancies: {urls.Count()}");
 
                 var options = new ParallelOptions
                 {
@@ -186,7 +180,6 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
                 };
 
                 int total = urls.Count();
-                int processed = 0;
                 int id = 0;
 
                 await Parallel.ForEachAsync(urls, options, async (url, ct) =>
@@ -209,11 +202,6 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
                             _logger.LogInformation($"Job posted {currentId} з {total}");
                         }
-
-                        int done = Interlocked.Increment(ref processed);
-                        int percent = (int)((double)done / total * 100);
-
-                        progress?.Report(percent);
                     }
                     catch (Exception ex)
                     {
@@ -222,8 +210,6 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
                 });
 
                 _logger.LogInformation($"Total number of vacancies in the list: {vacancies.Count}");
-
-                progress?.Report(100);
             }
             catch (Exception ex)
             {
@@ -232,89 +218,11 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
             return vacancies.ToList();
         }
-
-        public async Task<IEnumerable<Vacancy>> ScrapeNewVacanciesAsync(string? cityOrOption = "Вся Україна", int? maxPage = 1, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<Vacancy>> ScrapeAsync(string? cityOrOption, int? maxPage, CancellationToken cancellationToken = default)
         {
-            var vacancies = new ConcurrentBag<Vacancy>();
+            var urls = await ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
 
-            try
-            {
-                var urls = await ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
-
-                var idVacancy = urls
-                    .Select(url => url.Split('/'))
-                    .Where(parts => parts.Length > 2)
-                    .Select(parts => parts[4])
-                    .ToList();
-
-                var existingIds = await _vacancyRepository.GetAllIdsAsync();
-                var newVacancies = idVacancy.Where(id => !existingIds.Contains(id)).ToList();
-
-                var options = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = 10,
-                    CancellationToken = cancellationToken
-                };
-
-                await Parallel.ForEachAsync(newVacancies, options, async (id, ct) =>
-                {
-                    try
-                    {
-                        int delayMs = Rnd.Value.Next(2000, 5000);
-                        await Task.Delay(delayMs, ct);
-
-                        var fullUrl = $"https://www.work.ua/jobs/{id}/";
-                        var document = await _context.OpenAsync(fullUrl, ct);
-                        var vacancy = HtmlVacancyPars(document);
-
-                        if (vacancy != null)
-                        {
-                            vacancies.Add(vacancy);
-
-                            Console.WriteLine($"New vacancy found {id} ");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "URL processing error {Url}", id);
-                    }
-                });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing Work.ua New Vacancies");
-            }
-
-            return vacancies.ToList();
-        }
-
-        public async Task<List<string>> ScrapeNotExistentVacanciesAsync(string? cityOrOption = "Вся Україна", int? maxPage = 1, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var currentUrls = await ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
-                var currentIds = currentUrls
-                    .Select(url => url.Split('/', StringSplitOptions.RemoveEmptyEntries).Last())
-                    .ToHashSet();
-
-                var dbIds = (await _vacancyRepository.GetAllIdsAsync()).ToHashSet();
-                var removedIds = dbIds.Except(currentIds).ToList();
-
-                if (removedIds.Count == 0)
-                {
-                    _logger.LogInformation($"Total number of irrelevant vacancies: {removedIds.Count}");
-
-                    return new List<string>();
-                }
-
-                return removedIds;
-            }
-            catch( Exception ex )
-            {
-                _logger.LogError(ex, "Error parsing Work.ua not existent vacancies");
-            }
-
-            return new List<string>();
+            return await ScrapeDetailsAsync(urls, cancellationToken);
         }
     }
 }
