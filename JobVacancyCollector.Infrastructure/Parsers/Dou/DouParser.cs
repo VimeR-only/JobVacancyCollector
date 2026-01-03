@@ -3,14 +3,13 @@ using AngleSharp.Dom;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Infrastructure.Parsers.Dou.Html;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using System.Runtime.CompilerServices;
 using JobVacancyCollector.Domain.Models;
 
-namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
+namespace JobVacancyCollector.Infrastructure.Parsers.Dou
 {
     public class DouParser : IVacancyScraper
     {
@@ -151,8 +150,6 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
                     return allUrls;
                 }
 
-                //Console.WriteLine("Token: " + token);
-
                 int currentCount = 0;
                 bool isLast = false;
                 int pagesCollected = 0;
@@ -173,17 +170,16 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
                     if (!isLast) await Task.Delay(1500, cancellationToken);
                 }
 
-                Console.WriteLine("Cout: " + allUrls.Count);
-                foreach (var item in allUrls)
-                {
-                    Console.WriteLine(item);
-                }
+                //Console.WriteLine("Cout: " + allUrls.Count);
+                //foreach (var item in allUrls)
+                //{
+                //    Console.WriteLine(item);
+                //}
 
             }
             catch (Exception ex)
             {
                 _logger.LogError("Error scrape url");
-
             }
 
             return allUrls;

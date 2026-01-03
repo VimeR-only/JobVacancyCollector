@@ -1,6 +1,6 @@
 using DocumentFormat.OpenXml.Bibliography;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
-using JobVacancyCollector.Infrastructure.Parsers.WorkUa;
+using JobVacancyCollector.Infrastructure.Parsers.Dou;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JobVacancyCollector.Infrastructure.Parsers

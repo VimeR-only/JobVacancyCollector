@@ -1,17 +1,14 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
-using DocumentFormat.OpenXml.Vml;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Domain.Models;
-using JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html;
+using JobVacancyCollector.Infrastructure.Parsers.Dou.Html;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
 
-namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
+namespace JobVacancyCollector.Infrastructure.Parsers.Dou
 {
     public class WorkUaParser : IVacancyScraper
     {

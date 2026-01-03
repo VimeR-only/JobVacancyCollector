@@ -1,6 +1,6 @@
 ﻿using AngleSharp.Dom;
 
-namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html
+namespace JobVacancyCollector.Infrastructure.Parsers.Dou.Html
 {
     public class HtmlWorkUaParser : IHtmlWorkUaParser
     {

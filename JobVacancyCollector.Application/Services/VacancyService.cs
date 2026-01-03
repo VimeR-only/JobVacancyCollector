@@ -3,6 +3,7 @@ using JobVacancyCollector.Application.Abstractions.Repositories;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Application.Interfaces;
 using JobVacancyCollector.Domain.Models;
+using Microsoft.Extensions.Logging;
 
 namespace JobVacancyCollector.Application.Services
 {
@@ -11,11 +12,12 @@ namespace JobVacancyCollector.Application.Services
     {
         private readonly IVacancyRepository _vacancyRepository;
         private readonly IScraperFactory _scraperFactory;
-
-        public VacancyService(IVacancyRepository vacancyRepository, IScraperFactory scraperFactory)
+        private readonly ILogger<VacancyService> _logger;
+        public VacancyService(IVacancyRepository vacancyRepository, IScraperFactory scraperFactory, ILogger<VacancyService> logger)
         {
             _vacancyRepository = vacancyRepository;
             _scraperFactory = scraperFactory;
+            _logger = logger;
         }
 
         public async Task ScrapeAndSaveAsync(string site, string? city, int? maxPage, CancellationToken ct)
@@ -34,12 +36,16 @@ namespace JobVacancyCollector.Application.Services
                 if (batch.Count >= batchSize)
                 {
                     await _vacancyRepository.AddRangeAsync(batch);
-                    //_logger.LogInformation($"Збережено пачку з {batch.Count} вакансій");
+
+                    _logger.LogInformation($"Saved a pack of {batch.Count} vacancies");
+
                     batch.Clear();
                 }
             }
 
             if (batch.Any()) await _vacancyRepository.AddRangeAsync(batch);
+
+            //_logger.LogInformation($"Everything is saved {batch.Count}");
         }
 
         //public async Task<bool> ScrapeNewAndSaveAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
