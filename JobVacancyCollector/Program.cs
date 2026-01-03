@@ -5,8 +5,8 @@ using JobVacancyCollector.Application.Services;
 using JobVacancyCollector.Infrastructure.Data;
 using JobVacancyCollector.Infrastructure.Parsers;
 using JobVacancyCollector.Infrastructure.Parsers.Dou.Html;
-using JobVacancyCollector.Infrastructure.Parsers.WorkUa;
-using JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html;
+using JobVacancyCollector.Infrastructure.Parsers.Dou;
+using JobVacancyCollector.Infrastructure.Parsers.Dou.Html;
 using JobVacancyCollector.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
@@ -47,7 +47,7 @@ namespace JobVacancyCollector
             });
 
             builder.Services.AddScoped<HtmlDouParser>();
-            builder.Services.AddScoped<IVacancyScraper, DouParser>();
+            //builder.Services.AddScoped<IVacancyScraper, DouParser>();
 
             builder.Services.AddScoped<IVacancyRepository, VacancyRepository>();
             builder.Services.AddScoped<IVacancyService, VacancyService>();
