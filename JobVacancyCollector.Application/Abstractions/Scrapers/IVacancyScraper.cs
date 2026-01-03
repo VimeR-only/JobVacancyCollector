@@ -1,4 +1,5 @@
 ﻿using JobVacancyCollector.Domain.Models.WorkUa;
+using System.Runtime.CompilerServices;
 
 namespace JobVacancyCollector.Application.Abstractions.Scrapers
 {
@@ -6,8 +7,8 @@ namespace JobVacancyCollector.Application.Abstractions.Scrapers
     {
         public string SourceName { get; set; }
 
-        Task<IEnumerable<Vacancy>> ScrapeAsync(string? cityOrOption, int? maxPage = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<Vacancy> ScrapeAsync(string? cityOrOption, int? maxPage = null, [EnumeratorCancellation] CancellationToken cancellationToken = default);
+        IAsyncEnumerable<Vacancy> ScrapeDetailsAsync(IEnumerable<string> urls, [EnumeratorCancellation] CancellationToken cancellationToken = default);
         Task<List<string>> ScraperUrlAsync(string? cityOrOption = "Вся Україна", int? maxPage = null, CancellationToken cancellationToken = default);
-        Task<IEnumerable<Vacancy>> ScrapeDetailsAsync(IEnumerable<string> urls, CancellationToken cancellationToken = default);
     }
 }

@@ -1,11 +1,15 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
+using DocumentFormat.OpenXml.Vml;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Domain.Models.WorkUa;
 using JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Channels;
 
 namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 {
@@ -165,64 +169,57 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
             return urls;
         }
 
-        public async Task<IEnumerable<Vacancy>> ScrapeDetailsAsync(IEnumerable<string> urls, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<Vacancy> ScrapeDetailsAsync(IEnumerable<string> urls, [EnumeratorCancellation] CancellationToken ct = default)
         {
-            var vacancies = new ConcurrentBag<Vacancy>();
+            var channel = Channel.CreateUnbounded<Vacancy>();
 
-            try
+            int total = urls.Count();
+            int processed = 0;
+
+            var backgroundTask = Parallel.ForEachAsync(urls, new ParallelOptions
             {
-                _logger.LogInformation($"Total number of vacancies: {urls.Count()}");
-
-                var options = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = 10,
-                    CancellationToken = cancellationToken
-                };
-
-                int total = urls.Count();
-                int id = 0;
-
-                await Parallel.ForEachAsync(urls, options, async (url, ct) =>
-                {
-                    try
-                    {
-                        int delayMs = Rnd.Value.Next(2000, 5000);
-                        await Task.Delay(delayMs, ct);
-
-                        int currentId = Interlocked.Increment(ref id);
-
-                        var document = await _context.OpenAsync(url, ct);
-                        var vacancy = HtmlVacancyPars(document);
-
-                        if (vacancy != null)
-                        {
-                            vacancy.SourceId = url.Split("/")[4];
-
-                            vacancies.Add(vacancy);
-
-                            _logger.LogInformation($"Job posted {currentId} з {total}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "URL processing error {Url}", url);
-                    }
-                });
-
-                _logger.LogInformation($"Total number of vacancies in the list: {vacancies.Count}");
-            }
-            catch (Exception ex)
+                MaxDegreeOfParallelism = 10,
+                CancellationToken = ct
+            }, async (url, token) =>
             {
-                _logger.LogError(ex, "Error parsing Work.ua");
-            }
+                try
+                {
+                    await Task.Delay(Rnd.Value.Next(2000, 5000), token);
 
-            return vacancies.ToList();
+                    var document = await _context.OpenAsync(url, token);
+                    var vacancy = HtmlVacancyPars(document);
+
+                    int current = Interlocked.Increment(ref processed);
+
+                    if (vacancy != null)
+                    {
+                        vacancy.SourceId = url.Split("/")[4];
+                        vacancy.SourceName = SourceName;
+
+                        await channel.Writer.WriteAsync(vacancy, token);
+                    }
+
+                    _logger.LogInformation("Progress: {current} / {total} processed", current, total);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing {Url}", url);
+                }
+            }).ContinueWith(_ => channel.Writer.Complete());
+
+            await foreach (var v in channel.Reader.ReadAllAsync(ct))
+            {
+                yield return v;
+            }
         }
-        public async Task<IEnumerable<Vacancy>> ScrapeAsync(string? cityOrOption, int? maxPage, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<Vacancy> ScrapeAsync(string? cityOrOption, int? maxPage, [EnumeratorCancellation] CancellationToken ct = default)
         {
-            var urls = await ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
+            var urls = await ScraperUrlAsync(cityOrOption, maxPage, ct);
 
-            return await ScrapeDetailsAsync(urls, cancellationToken);
+            await foreach (var vacancy in ScrapeDetailsAsync(urls, ct))
+            {
+                yield return vacancy;
+            }
         }
     }
 }
