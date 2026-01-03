@@ -1,4 +1,7 @@
-﻿using JobVacancyCollector.Application.Interfaces;
+﻿using JobVacancyCollector.Application.Abstractions.Scrapers;
+using JobVacancyCollector.Application.Interfaces;
+using JobVacancyCollector.Domain.Models;
+using JobVacancyCollector.Infrastructure.Parsers;
 using Microsoft.AspNetCore.Mvc;
 using System.IO;
 
@@ -9,10 +12,12 @@ namespace JobVacancyCollector.Controllers
     public class VacancyController : ControllerBase
     {
         private readonly IVacancyService _vacancyService;
+        private readonly IScraperFactory _scraperFactory;
 
-        public VacancyController(IVacancyService vacancyService)
+        public VacancyController(IVacancyService vacancyService, IScraperFactory scraperFactory)
         {
             _vacancyService = vacancyService;
+            _scraperFactory = scraperFactory;
         }
 
         [HttpGet]
@@ -25,14 +30,20 @@ namespace JobVacancyCollector.Controllers
             return Ok(vacancys);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> ScrapeVacancy(string? city, int? maxPage)
+        [HttpPost("scrape")]
+        public IActionResult ScrapeVacancy([FromQuery] ScraperSource source, string? city, int? maxPage)
         {
-            var status = await _vacancyService.ScrapeAndSaveAsync(city, maxPage);
+            try
+            {
+                var siteName = source.ToString();
+                _vacancyService.ScrapeAndSaveAsync(siteName, city, maxPage, CancellationToken.None);
 
-            if (!status) return NotFound();
-
-            return Ok(status);
+                return Accepted(new { message = "Parsing process is running in the background" });
+            }
+            catch (NotSupportedException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
 
