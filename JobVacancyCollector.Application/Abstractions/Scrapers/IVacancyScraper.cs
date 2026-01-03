@@ -1,4 +1,4 @@
-﻿using JobVacancyCollector.Domain.Models.WorkUa;
+﻿using JobVacancyCollector.Domain.Models;
 using System.Runtime.CompilerServices;
 
 namespace JobVacancyCollector.Application.Abstractions.Scrapers

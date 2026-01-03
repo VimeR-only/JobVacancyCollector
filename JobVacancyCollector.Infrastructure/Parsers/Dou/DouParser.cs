@@ -1,7 +1,6 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
-using JobVacancyCollector.Domain.Models.WorkUa;
 using JobVacancyCollector.Infrastructure.Parsers.Dou.Html;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -9,6 +8,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using System.Runtime.CompilerServices;
+using JobVacancyCollector.Domain.Models;
 
 namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 {

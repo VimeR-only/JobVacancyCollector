@@ -2,26 +2,30 @@
 using JobVacancyCollector.Application.Abstractions.Repositories;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Application.Interfaces;
-using JobVacancyCollector.Domain.Models.WorkUa;
+using JobVacancyCollector.Domain.Models;
 
 namespace JobVacancyCollector.Application.Services
 {
+
     public class VacancyService : IVacancyService
     {
         private readonly IVacancyRepository _vacancyRepository;
-        private readonly IVacancyScraper _vacancyScraper;
-        public VacancyService(IVacancyRepository vacancyRepository, IVacancyScraper vacancyScraper)
+        private readonly IScraperFactory _scraperFactory;
+
+        public VacancyService(IVacancyRepository vacancyRepository, IScraperFactory scraperFactory)
         {
             _vacancyRepository = vacancyRepository;
-            _vacancyScraper = vacancyScraper;
+            _scraperFactory = scraperFactory;
         }
 
-        public async Task ScrapeAndSaveAsync(string? city, int? maxPage, CancellationToken ct)
+        public async Task ScrapeAndSaveAsync(string site, string? city, int? maxPage, CancellationToken ct)
         {
+            var scraper = _scraperFactory.GetScraper(site);
+
             var batch = new List<Vacancy>();
             const int batchSize = 50;
 
-            await foreach (var vacancy in _vacancyScraper.ScrapeAsync(city, maxPage, ct))
+            await foreach (var vacancy in scraper.ScrapeAsync(city, maxPage, ct))
             {
                 if (await _vacancyRepository.ExistsAsync(vacancy.SourceId)) continue;
 
@@ -63,9 +67,11 @@ namespace JobVacancyCollector.Application.Services
         //    return await _vacancyRepository.AddRangeAsync(newVacancies);
         //}
 
-        public async Task<bool> ScrapeNotExistentDeleteAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
+        public async Task<bool> ScrapeNotExistentDeleteAsync(string site, string? city, int? maxPage, CancellationToken cancellationToken = default)
         {
-            var currentUrls = await _vacancyScraper.ScraperUrlAsync(city, maxPage, cancellationToken);
+            var scraper = _scraperFactory.GetScraper(site);
+
+            var currentUrls = await scraper.ScraperUrlAsync(city, maxPage, cancellationToken);
 
             if (!currentUrls.Any()) return false;
 
