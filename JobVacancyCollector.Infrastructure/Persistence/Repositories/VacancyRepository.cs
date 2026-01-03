@@ -14,28 +14,12 @@ namespace JobVacancyCollector.Infrastructure.Persistence.Repositories
             _context = context;
         }
 
-        public async Task<bool> AddRangeAsync(IEnumerable<Vacancy> vacancies)
+        public async Task AddRangeAsync(IEnumerable<Vacancy> vacancies)
         {
-            var newVacancies = new List<Vacancy>();
+            await _context.Vacancies.AddRangeAsync(vacancies);
+            await _context.SaveChangesAsync();
 
-            foreach (var vacancy in vacancies)
-            {
-                bool exists = await _context.Vacancies
-                    .AnyAsync(v => v.SourceId == vacancy.SourceId && v.SourceName == vacancy.SourceName);
-
-                if (!exists)
-                    newVacancies.Add(vacancy);
-            }
-
-            if (newVacancies.Count > 0)
-            {
-                await _context.Vacancies.AddRangeAsync(newVacancies);
-                await _context.SaveChangesAsync();
-
-                return true;
-            }
-
-            return false;
+            _context.ChangeTracker.Clear();
         }
 
         public async Task<bool> ClearAsync()

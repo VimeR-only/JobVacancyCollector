@@ -3,7 +3,6 @@ using JobVacancyCollector.Application.Abstractions.Repositories;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Application.Interfaces;
 using JobVacancyCollector.Domain.Models.WorkUa;
-using ClosedXML.Excel;
 
 namespace JobVacancyCollector.Application.Services
 {
@@ -17,39 +16,52 @@ namespace JobVacancyCollector.Application.Services
             _vacancyScraper = vacancyScraper;
         }
 
-        public async Task<bool> ScrapeAndSaveAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
+        public async Task ScrapeAndSaveAsync(string? city, int? maxPage, CancellationToken ct)
         {
-            var newVacancies = await _vacancyScraper.ScrapeAsync(city, maxPage, cancellationToken);
+            var batch = new List<Vacancy>();
+            const int batchSize = 50;
 
-            if (newVacancies.Count() == 0) return false;
+            await foreach (var vacancy in _vacancyScraper.ScrapeAsync(city, maxPage, ct))
+            {
+                if (await _vacancyRepository.ExistsAsync(vacancy.SourceId)) continue;
 
-            return await _vacancyRepository.AddRangeAsync(newVacancies);
+                batch.Add(vacancy);
+
+                if (batch.Count >= batchSize)
+                {
+                    await _vacancyRepository.AddRangeAsync(batch);
+                    //_logger.LogInformation($"Збережено пачку з {batch.Count} вакансій");
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Any()) await _vacancyRepository.AddRangeAsync(batch);
         }
 
-        public async Task<bool> ScrapeNewAndSaveAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
-        {
-            var urls = await _vacancyScraper.ScraperUrlAsync(city, maxPage, cancellationToken);
+        //public async Task<bool> ScrapeNewAndSaveAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
+        //{
+        //    var urls = await _vacancyScraper.ScraperUrlAsync(city, maxPage, cancellationToken);
 
-            if (!urls.Any()) return false;
+        //    if (!urls.Any()) return false;
 
-            var idVacancy = urls
-                .Select(url => url.Split('/'))
-                .Where(parts => parts.Length > 2)
-                .Select(parts => parts[4])
-                .ToList();
+        //    var idVacancy = urls
+        //        .Select(url => url.Split('/'))
+        //        .Where(parts => parts.Length > 2)
+        //        .Select(parts => parts[4])
+        //        .ToList();
 
-            var existingIds = await _vacancyRepository.GetAllIdsAsync();
-            var newVacanciesUrl = idVacancy
-                .Where(id => !existingIds.Contains(id))
-                .Select(id => $"https://www.work.ua/jobs/{id}/")
-                .ToList();
+        //    var existingIds = await _vacancyRepository.GetAllIdsAsync();
+        //    var newVacanciesUrl = idVacancy
+        //        .Where(id => !existingIds.Contains(id))
+        //        .Select(id => $"https://www.work.ua/jobs/{id}/")
+        //        .ToList();
 
-            var newVacancies = await _vacancyScraper.ScrapeDetailsAsync(newVacanciesUrl, cancellationToken);
+        //    var newVacancies = await _vacancyScraper.ScrapeDetailsAsync(newVacanciesUrl, cancellationToken);
 
-            if (!newVacancies.Any()) return false;
+        //    if (!newVacancies.Any()) return false;
 
-            return await _vacancyRepository.AddRangeAsync(newVacancies);
-        }
+        //    return await _vacancyRepository.AddRangeAsync(newVacancies);
+        //}
 
         public async Task<bool> ScrapeNotExistentDeleteAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
         {
