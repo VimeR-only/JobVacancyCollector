@@ -2,7 +2,7 @@
 using AngleSharp.Dom;
 using DocumentFormat.OpenXml.Vml;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
-using JobVacancyCollector.Domain.Models.WorkUa;
+using JobVacancyCollector.Domain.Models;
 using JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;

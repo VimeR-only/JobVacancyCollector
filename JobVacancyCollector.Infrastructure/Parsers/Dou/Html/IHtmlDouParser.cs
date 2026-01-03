@@ -1,5 +1,4 @@
 ﻿using AngleSharp.Dom;
-using JobVacancyCollector.Domain.Models.WorkUa;
 
 namespace JobVacancyCollector.Infrastructure.Parsers.Dou.Html
 {

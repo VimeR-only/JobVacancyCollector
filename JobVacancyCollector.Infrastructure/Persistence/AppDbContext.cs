@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using JobVacancyCollector.Domain.Models.WorkUa;
+using JobVacancyCollector.Domain.Models;
 
 namespace JobVacancyCollector.Infrastructure.Data
 {

@@ -1,5 +1,5 @@
 ﻿using JobVacancyCollector.Application.Abstractions.Repositories;
-using JobVacancyCollector.Domain.Models.WorkUa;
+using JobVacancyCollector.Domain.Models;
 using JobVacancyCollector.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 

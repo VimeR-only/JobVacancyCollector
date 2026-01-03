@@ -1,4 +1,4 @@
-﻿namespace JobVacancyCollector.Domain.Models.WorkUa
+﻿namespace JobVacancyCollector.Domain.Models
 {
     public class Vacancy
     {
