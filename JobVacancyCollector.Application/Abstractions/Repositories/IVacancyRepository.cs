@@ -1,4 +1,4 @@
-﻿using JobVacancyCollector.Domain.Models.WorkUa;
+﻿using JobVacancyCollector.Domain.Models;
 
 namespace JobVacancyCollector.Application.Abstractions.Repositories
 {
