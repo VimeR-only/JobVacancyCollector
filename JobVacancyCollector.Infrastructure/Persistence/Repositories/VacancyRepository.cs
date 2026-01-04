@@ -29,53 +29,60 @@ namespace JobVacancyCollector.Infrastructure.Persistence.Repositories
             return true;
         }
 
-        public async Task<bool> ExistsAsync(string? sourceId = null, string? sourceName = null)
+        public async Task<bool> ExistsAsync(string sourceName, string sourceId)
         {
             return await _context.Vacancies.AnyAsync(v =>
-                (sourceId == null || v.SourceId == sourceId) &&
-                (sourceName == null || v.SourceName == sourceName));
+                v.SourceName == sourceName &&
+                v.SourceId == sourceId);
         }
 
-        public async Task<IEnumerable<string>> GetAllIdsAsync()
+        public async Task<IEnumerable<string>> GetAllIdsAsync(string? sourceName = null)
         {
-            return await _context.Vacancies
+            if (sourceName == null)
+            {
+                return await _context.Vacancies
                 .Select(v => v.SourceId)
+                .ToListAsync();
+            }
+
+            return await _context.Vacancies.Where(v => v.SourceName == sourceName).Select(v => v.SourceId)
                 .ToListAsync();
         }
 
-        public async Task<bool> RemoveIdAsync(string sourceId)
+        public async Task<bool> RemoveIdAsync(string sourceName, string sourceId)
         {
-            var vacancy = await _context.Vacancies.FirstOrDefaultAsync(v => v.SourceId == sourceId);
+            var vacancy = await _context.Vacancies.FirstOrDefaultAsync(v => v.SourceName == sourceName && v.SourceId == sourceId);
 
-            if (vacancy != null)
-            {
-                _context.Vacancies.Remove(vacancy);
-                await _context.SaveChangesAsync();
+            if (vacancy == null) return false;
 
-                return true;
-            }
-
-            return false;
-        }
-
-        public async Task<bool> RemoveRangeAsync(IEnumerable<string> sourceIds)
-        {
-            var vacancies = _context.Vacancies.Where(v => sourceIds.Contains(v.SourceId));
-
-            _context.Vacancies.RemoveRange(vacancies);
+            _context.Vacancies.Remove(vacancy);
             await _context.SaveChangesAsync();
 
             return true;
         }
 
-        public async Task<IEnumerable<Vacancy>> GetAllAsync()
+        public async Task<bool> RemoveRangeAsync(string sourceName, IEnumerable<string> sourceIds)
         {
-            return await _context.Vacancies.ToListAsync();
+            await _context.Vacancies
+                    .Where(v => v.SourceName == sourceName && sourceIds.Contains(v.SourceId))
+                    .ExecuteDeleteAsync();
+
+            return true;
         }
 
-        public async Task<Vacancy?> GetByIdAsync(string id)
+        public async Task<IEnumerable<Vacancy>> GetAllAsync(string? sourceName = null)
         {
-            return await _context.Vacancies.FirstOrDefaultAsync(v => v.SourceId == id);
+            if (sourceName == null)
+            {
+                return await _context.Vacancies.ToListAsync();
+            }
+
+            return await _context.Vacancies.Where(v => v.SourceName == sourceName).ToListAsync();
+        }
+
+        public async Task<Vacancy?> GetByIdAsync(string sourceName, string id)
+        {
+            return await _context.Vacancies.FirstOrDefaultAsync(v => v.SourceName == sourceName && v.SourceId == id);
         }
     }
 }
