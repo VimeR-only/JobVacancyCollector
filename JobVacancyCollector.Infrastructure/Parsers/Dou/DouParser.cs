@@ -128,6 +128,10 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
             return (links, isLast);
         }
 
+        public string GetIdFromUrl(string url)
+        {
+            return GetVacancyId(url);
+        }
         public async Task<List<string>> ScraperUrlAsync(string? cityOrOption = "", int? maxPage = null, CancellationToken cancellationToken = default)
         {
             List<string> allUrls = new List<string>();

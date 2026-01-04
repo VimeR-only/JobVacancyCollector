@@ -30,7 +30,7 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
             _context = BrowsingContext.New(config);
         }
 
-        private static string ToLatinCity(string city)
+        private string ToLatinCity(string city)
         {
             var map = new Dictionary<char, string>
             {
@@ -111,7 +111,17 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
 
             return vacancy;
         }
-        
+
+        private string GetVacancyId(string url)
+        {
+            return url.Split("/")[4];
+        }
+
+        public string GetIdFromUrl(string url)
+        {
+            return GetVacancyId(url);
+        }
+
         public async Task<List<string>> ScraperUrlAsync(string? cityOrOption = "Вся Україна", int? maxPage = null, CancellationToken cancellationToken = default)
         {
             List<string> urls = new List<string>();
@@ -190,7 +200,7 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
 
                     if (vacancy != null)
                     {
-                        vacancy.SourceId = url.Split("/")[4];
+                        vacancy.SourceId = GetVacancyId(url);
                         vacancy.SourceName = SourceName;
 
                         await channel.Writer.WriteAsync(vacancy, token);
