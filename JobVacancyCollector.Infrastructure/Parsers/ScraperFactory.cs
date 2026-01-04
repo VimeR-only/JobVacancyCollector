@@ -1,7 +1,4 @@
-using DocumentFormat.OpenXml.Bibliography;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
-using JobVacancyCollector.Infrastructure.Parsers.Dou;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace JobVacancyCollector.Infrastructure.Parsers
 {
@@ -14,16 +11,26 @@ namespace JobVacancyCollector.Infrastructure.Parsers
             _scrapers = scrapers;
         }
 
+        public string GetSourceNameScraper(string source)
+        {
+            var scraper = GetScraper(source);
+
+            return scraper.SourceName;
+        }
+
         public IVacancyScraper GetScraper(string source)
         {
-            var normalizedSource = source.ToLower().Replace("jobs.", "").Replace(".ua", "");
+            var scraper = _scrapers.FirstOrDefault(s =>
+                s.SourceName.Contains(source, StringComparison.OrdinalIgnoreCase) ||
+                source.Contains(s.SourceName, StringComparison.OrdinalIgnoreCase));
 
-            return normalizedSource switch
+            if (scraper == null)
             {
-                "dou" => _scrapers.First(s => s.SourceName == "jobs.dou.ua"),
-                "work" => _scrapers.First(s => s.SourceName == "Work.ua"),
-                _ => throw new ArgumentException($"Сайт {source} не підтримується")
-            };
+                throw new ArgumentException($"Website '{source}' is not supported. " +
+                    $"Available sources: {string.Join(", ", _scrapers.Select(s => s.SourceName))}");
+            }
+
+            return scraper;
         }
     }
 }
