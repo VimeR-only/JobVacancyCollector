@@ -1,42 +1,87 @@
 #  Job Vacancy Collector
 
-**Job Vacancy Collector** — a large-scale system for collecting, processing and storing vacancies from various sources (so far only from work.ua). The project is written in **.NET 8 / C#**
+**Job Vacancy Collector** — a high-performance system designed for large-scale collection, processing, and storage of job vacancies from various Ukrainian job boards. 
+
+The project is built with **.NET 8** and leverages modern asynchronous patterns to ensure scalability and efficiency.
 
 ---
 
 ## Main features
 
-- Parsing of vacancies from various sources (work.ua) across the country.
-- Storing vacancies in the database (PostgreSQL).
-- Deleting outdated vacancies.
-- Exporting vacancies to **Excel** format.
-- API for manually starting parsing and exporting.
+* **Multi-Source Scrapping:** Support for **Work.ua** and **Jobs.dou.ua** with an extensible architecture for adding new providers (e.g., Rabota.ua, Jooble).
+* **Parallel Execution:** Run multiple scrapers simultaneously using isolated `IServiceScope` to ensure database integrity and high throughput.
+* **Memory Efficiency:** Built on `IAsyncEnumerable` (Async Streams) to process thousands of vacancies without high RAM consumption.
+* **Smart Storage:** Batch saving to **PostgreSQL** to minimize database roundtrips.
+- **Data Maintenance:** Automatic cleanup of outdated vacancies.
+- **Reporting:** Export collected data directly to **Excel** format.
+- **Developer Friendly:** Fully documented API via **Swagger UI**.
 
 ---
 
-## Note:
+## Architecture & Technologies
 
-I wrote this project for people who might find it useful, so it is not used commercially, and because of this its support is not stable, but it is there. I also plan to write support for sites like Rabota.ua and Jobs.dou.ua. The first support was written for work.ua because this is the largest job search site in Ukraine. The quality of the code is not ideal and I may have broken some programming rules, so I will be glad if you suggest improving it.
+The system follows a clean, multi-layered architecture:
 
----
+-   **Domain:** Core entities and repository abstractions.
+-   **Application:** Business logic, Scraper Factory (Strategy Pattern), and Service interfaces.
+-   **Infrastructure:** EF Core implementations, PostgreSQL integration, and HTML parsers using AngleSharp/HttpClient.
+-   **WebAPI:** RESTful controllers for manual management and data access.
 
-## Architecture
-
-The project has a multi-layered structure:
-
-
-JobVacancyCollector:
-
-├── Domain/ // Entities and business logic
-
-├── Application/ // Use Cases and interfaces
-
-├── Infrastructure/ // Implementation of repositories, DbContext, external services
-
-└── WebAPI/ // API for data access and manual management
+### Tech Stack
+-   **.NET 8 (C#)**
+-   **Entity Framework Core**
+-   **PostgreSQL**
+-   **HttpClient Factory**
+-   **Swagger / OpenAPI**
 
 ---
 
-## Swagger:
+## Getting Started
 
-<img width="1321" height="414" alt="image" src="https://github.com/user-attachments/assets/d29d1c05-90a4-45e8-8e22-a7e030cf4265" />
+### Prerequisites
+- .NET 8 SDK
+- PostgreSQL instance
+
+### Installation
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/VimeR-only/JobVacancyCollector.git
+    ```
+2.  **Configure Database:**
+    Update the connection string in `appsettings.json`:
+    ```json
+    "ConnectionStrings": {
+      "WebApiDb": "Host=localhost;Database=JobVacancyDb;Username=postgres;Password=your_password"
+    }
+    ```
+3.  **Apply Migrations:**
+    ```bash
+    dotnet ef database update
+    ```
+4.  **Run the application:**
+    ```bash
+    dotnet run --project JobVacancyCollector
+    ```
+
+---
+
+## Roadmap
+- [x] Parallel scraping support.
+- [x] Integration with Work.ua and Jobs.dou.ua.
+- [ ] Integration with Rabota.ua and Jooble.
+- [ ] Advanced cross-source deduplication logic.
+- [ ] Telegram Bot for real-time vacancy alerts.
+- [ ] Frontend dashboard (React/Blazor).
+
+---
+
+API Documentation (Swagger)
+
+The API allows you to trigger scrapers manually and monitor the data flow.
+
+<img width="1313" height="607" alt="image" src="https://github.com/user-attachments/assets/58a2342b-aca2-4a76-b7cf-d1941070bbf0" />
+
+---
+
+## Contributing
+Contributions are welcome! If you have suggestions for improving the code quality or adding new features, please feel free to open an issue or submit a pull request.
