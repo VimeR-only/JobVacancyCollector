@@ -20,9 +20,9 @@ namespace JobVacancyCollector.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(ScraperSource source)
         {
-            var vacancys = await _vacancyService.GetAllAsync();
+            var vacancys = await _vacancyService.GetAllAsync(source.ToString());
 
             if (vacancys == null) return NotFound();
 

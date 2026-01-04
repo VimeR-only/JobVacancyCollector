@@ -29,7 +29,7 @@ namespace JobVacancyCollector.Application.Services
 
             await foreach (var vacancy in scraper.ScrapeAsync(city, maxPage, ct))
             {
-                if (await _vacancyRepository.ExistsAsync(vacancy.SourceId)) continue;
+                if (await _vacancyRepository.ExistsAsync(scraper.SourceName, vacancy.SourceId)) continue;
 
                 batch.Add(vacancy);
 
@@ -48,59 +48,78 @@ namespace JobVacancyCollector.Application.Services
             //_logger.LogInformation($"Everything is saved {batch.Count}");
         }
 
-        //public async Task<bool> ScrapeNewAndSaveAsync(string? city, int? maxPage, CancellationToken cancellationToken = default)
-        //{
-        //    var urls = await _vacancyScraper.ScraperUrlAsync(city, maxPage, cancellationToken);
-
-        //    if (!urls.Any()) return false;
-
-        //    var idVacancy = urls
-        //        .Select(url => url.Split('/'))
-        //        .Where(parts => parts.Length > 2)
-        //        .Select(parts => parts[4])
-        //        .ToList();
-
-        //    var existingIds = await _vacancyRepository.GetAllIdsAsync();
-        //    var newVacanciesUrl = idVacancy
-        //        .Where(id => !existingIds.Contains(id))
-        //        .Select(id => $"https://www.work.ua/jobs/{id}/")
-        //        .ToList();
-
-        //    var newVacancies = await _vacancyScraper.ScrapeDetailsAsync(newVacanciesUrl, cancellationToken);
-
-        //    if (!newVacancies.Any()) return false;
-
-        //    return await _vacancyRepository.AddRangeAsync(newVacancies);
-        //}
-
-        public async Task<bool> ScrapeNotExistentDeleteAsync(string site, string? city, int? maxPage, CancellationToken cancellationToken = default)
+        public async Task<bool> ScrapeNewAsync(string site, string? city, int? maxPage, CancellationToken ct = default)
         {
             var scraper = _scraperFactory.GetScraper(site);
 
-            var currentUrls = await scraper.ScraperUrlAsync(city, maxPage, cancellationToken);
+            var allUrls = await scraper.ScraperUrlAsync(city, maxPage, ct);
+            if (!allUrls.Any()) return false;
 
+            var existId = (await _vacancyRepository.GetAllIdsAsync(scraper.SourceName)).ToHashSet();
+
+            var newVacanciesUrl = allUrls
+                .Where(url => {
+                    var id = scraper.GetIdFromUrl(url);
+                    return !existId.Contains(id);
+                });
+
+            if (!newVacanciesUrl.Any()) return false;
+
+            var batch = new List<Vacancy>();
+            const int batchSize = 50;
+
+            await foreach (var vacancy in scraper.ScrapeDetailsAsync(newVacanciesUrl, ct))
+            {
+                batch.Add(vacancy);
+
+                if (batch.Count >= batchSize)
+                {
+                    await _vacancyRepository.AddRangeAsync(batch);
+
+                    _logger.LogInformation($"Saved a pack of {batch.Count} vacancies");
+
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Any()) await _vacancyRepository.AddRangeAsync(batch);
+
+            return true;
+        }
+
+        public async Task<bool> ScrapeNotExistentDeleteAsync(string site, string? city, int? maxPage, CancellationToken ct = default)
+        {
+            var scraper = _scraperFactory.GetScraper(site);
+
+            var currentUrls = await scraper.ScraperUrlAsync(city, maxPage, ct);
             if (!currentUrls.Any()) return false;
 
-            var currentIds = currentUrls
-                .Select(url => url.Split('/', StringSplitOptions.RemoveEmptyEntries).Last())
-                .ToHashSet();
+            var currentIds = currentUrls.Select(url => scraper.GetIdFromUrl(url)).ToHashSet();
 
-            var dbIds = (await _vacancyRepository.GetAllIdsAsync()).ToHashSet();
-            var removedIds = dbIds.Except(currentIds).ToList();
+            var dbIds = (await _vacancyRepository.GetAllIdsAsync(scraper.SourceName)).ToHashSet();
 
-            if (removedIds.Count == 0) return false;
+            var idsToRemove = dbIds.Where(id => !currentIds.Contains(id)).ToList();
 
-            return await _vacancyRepository.RemoveRangeAsync(removedIds);
+            if (!idsToRemove.Any()) return false;
+
+            _logger.LogWarning($"Removing {idsToRemove.Count} outdated vacancies for {scraper.SourceName}");
+
+            return await _vacancyRepository.RemoveRangeAsync(scraper.SourceName, idsToRemove);
         }
 
-        public async Task<IEnumerable<Vacancy>> GetAllAsync()
+        public async Task<IEnumerable<Vacancy>> GetAllAsync(string? site)
         {
-            return await _vacancyRepository.GetAllAsync();
+            if (site == null)
+            {
+                return await _vacancyRepository.GetAllAsync();
+            }
+
+            return await _vacancyRepository.GetAllAsync(_scraperFactory.GetSourceNameScraper(site));
         }
 
-        public async Task<Vacancy?> GetByIdAsync(string id)
+        public async Task<Vacancy?> GetByIdAsync(string site, string id)
         {
-            return await _vacancyRepository.GetByIdAsync(id);
+            return await _vacancyRepository.GetByIdAsync(_scraperFactory.GetSourceNameScraper(site), id);
         }
 
         public async Task ClearDb()
