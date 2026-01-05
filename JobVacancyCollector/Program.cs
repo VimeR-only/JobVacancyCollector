@@ -61,7 +61,7 @@ namespace JobVacancyCollector
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            var connectionString = builder.Configuration.GetConnectionString("WebApiDb");
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseNpgsql(connectionString));
 
@@ -72,6 +72,14 @@ namespace JobVacancyCollector
                 var services = scope.ServiceProvider;
                 try
                 {
+                    var context = services.GetRequiredService<AppDbContext>();
+                    if (context.Database.GetPendingMigrations().Any())
+                    {
+                        Console.WriteLine("Applying migrations...");
+                        context.Database.Migrate();
+                        Console.WriteLine("Migrations applied successfully.");
+                    }
+
                     //var dbContext = services.GetRequiredService<AppDbContext>();
                     //await dbContext.Database.MigrateAsync();
                     //Console.WriteLine("Database migrations applied successfully.");
