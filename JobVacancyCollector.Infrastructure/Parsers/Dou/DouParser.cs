@@ -195,7 +195,7 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
             var options = new ParallelOptions
             {
-                MaxDegreeOfParallelism = 2,
+                MaxDegreeOfParallelism = 10,
                 CancellationToken = cancellationToken
             };
 

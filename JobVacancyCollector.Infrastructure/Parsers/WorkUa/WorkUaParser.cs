@@ -173,7 +173,7 @@ namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 
             var backgroundTask = Parallel.ForEachAsync(urls, new ParallelOptions
             {
-                MaxDegreeOfParallelism = 2,
+                MaxDegreeOfParallelism = 10,
                 CancellationToken = ct
             }, async (url, token) =>
             {
