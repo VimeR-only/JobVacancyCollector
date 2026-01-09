@@ -36,32 +36,25 @@ The system follows a clean, multi-layered architecture:
 
 ---
 
-## Getting Started
+## Running with Docker
 
-### Prerequisites
-- .NET 8 SDK
-- PostgreSQL instance
+The easiest way to spin up the entire infrastructure (API, Worker, Database, RabbitMQ) is using **Docker Compose**.
 
-### Installation
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/VimeR-only/JobVacancyCollector.git
-    ```
-2.  **Configure Database:**
-    Update the connection string in `appsettings.json`:
-    ```json
-    "ConnectionStrings": {
-      "WebApiDb": "Host=localhost;Database=JobVacancyDb;Username=postgres;Password=your_password"
-    }
-    ```
-3.  **Apply Migrations:**
-    ```bash
-    dotnet ef database update
-    ```
-4.  **Run the application:**
-    ```bash
-    dotnet run --project JobVacancyCollector
-    ```
+### 1. Prerequisites
+- **Docker Desktop** installed and running.
+
+### 2. Launch the Environment
+From the project root directory, run:
+```bash
+docker-compose up -d --build
+```
+
+### 3. Accessing the Services
+| Service | URL / Port | Credentials (Default) |
+| :--- | :--- | :--- |
+| **Swagger UI (API)** | [http://localhost:8080/swagger](http://localhost:8080/swagger) | - |
+| **pgAdmin** | [http://localhost:5050](http://localhost:5050) | `admin@admin.com` / `admin` |
+| **RabbitMQ Management** | [http://localhost:15672](http://localhost:15672) | `guest` / `guest` |
 
 ---
 
