@@ -12,5 +12,6 @@ namespace JobVacancyCollector.Application.Abstractions.Repositories
         Task<IEnumerable<Vacancy>> GetAllAsync(string? sourceName = null);
         Task<IEnumerable<string>> GetAllIdsAsync(string? sourceName = null);
         Task<Vacancy?> GetByIdAsync(string sourceName, string id);
+        Task<bool> AnyAsync(string sourceName, CancellationToken ct);
     }
 }
