@@ -18,11 +18,17 @@ namespace JobVacancyCollector.Infrastructure.Parsers
             return scraper.SourceName;
         }
 
+        public IEnumerable<string> GetRegisterNames()
+        {
+            return _scrapers.Select(s => s.SourceName);
+        }
+
         public IVacancyScraper GetScraper(string source)
         {
             var scraper = _scrapers.FirstOrDefault(s =>
-                s.SourceName.Contains(source, StringComparison.OrdinalIgnoreCase) ||
-                source.Contains(s.SourceName, StringComparison.OrdinalIgnoreCase));
+                    s.SourceName.Equals(source, StringComparison.OrdinalIgnoreCase) ||
+                    s.SourceName.Contains(source, StringComparison.OrdinalIgnoreCase) ||
+                    source.Contains(s.SourceName, StringComparison.OrdinalIgnoreCase));
 
             if (scraper == null)
             {
