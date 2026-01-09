@@ -29,6 +29,8 @@ namespace JobVacancyCollector.Worker.Consumers
             var ct = context.CancellationToken;
             string sourceName = _scraperFactory.GetSourceNameScraper(data.Site);
 
+            _controlService.SetStart(sourceName);
+
             _logger.LogInformation("--- Site Analysis: {Site} ---", sourceName);
 
             try
