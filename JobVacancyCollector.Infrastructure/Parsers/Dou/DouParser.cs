@@ -1,7 +1,7 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
-using JobVacancyCollector.Infrastructure.Parsers.Dou.Html;
+using JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -9,7 +9,7 @@ using System.Threading.Channels;
 using System.Runtime.CompilerServices;
 using JobVacancyCollector.Domain.Models;
 
-namespace JobVacancyCollector.Infrastructure.Parsers.Dou
+namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 {
     public class DouParser : IVacancyScraper
     {
@@ -132,74 +132,72 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
         {
             return GetVacancyId(url);
         }
-        public async Task<List<string>> ScraperUrlAsync(string? cityOrOption = "", int? maxPage = null, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<string> ScraperUrlAsync(string? cityOrOption = "", int? maxPage = null, CancellationToken cancellationToken = default)
         {
-            List<string> allUrls = new List<string>();
+            var url = "https://jobs.dou.ua/vacancies/";
 
+            if (!string.IsNullOrEmpty(cityOrOption))
+            {
+                url += $"?city={cityOrOption}";
+            }
+
+            string mainPage;
             try
             {
-                var url = "https://jobs.dou.ua/vacancies/";
-
-                if (!string.IsNullOrEmpty(cityOrOption))
-                {
-                    url += $"?city={cityOrOption}";
-                }
-
-                var mainPage = await _client.GetStringAsync(url, cancellationToken);
-                var token = ExtractToken(mainPage);
-
-                if (string.IsNullOrEmpty(token))
-                {
-                    _logger.LogError("Token not found");
-                    return allUrls;
-                }
-
-                int currentCount = 0;
-                bool isLast = false;
-                int pagesCollected = 0;
-
-                while (!isLast && (!maxPage.HasValue || pagesCollected < maxPage.Value))
-                {
-                    if (cancellationToken.IsCancellationRequested) break;
-
-                    _logger.LogInformation("Scraping DOU vacancies offset: {count}", currentCount);
-
-                    var (urls, last) = await FetchVacancyUrls(cityOrOption, token, currentCount, cancellationToken);
-                    allUrls.AddRange(urls);
-
-                    isLast = last;
-                    currentCount += 20;
-                    pagesCollected++;
-
-                    if (!isLast) await Task.Delay(1500, cancellationToken);
-                }
-
-                //Console.WriteLine("Cout: " + allUrls.Count);
-                //foreach (var item in allUrls)
-                //{
-                //    Console.WriteLine(item);
-                //}
-
+                mainPage = await _client.GetStringAsync(url, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error scrape url");
+                _logger.LogError(ex, "Error loading DOU main page");
+                yield break;
             }
 
-            return allUrls;
+            var token = ExtractToken(mainPage);
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogError("Token not found");
+                yield break;
+            }
+
+            int currentCount = 0;
+            bool isLast = false;
+            int pagesCollected = 0;
+
+            while (!isLast && (!maxPage.HasValue || pagesCollected < maxPage.Value))
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                _logger.LogInformation("Scraping DOU vacancies offset: {count}", currentCount);
+
+                var (urls, last) = await FetchVacancyUrls(cityOrOption, token, currentCount, cancellationToken);
+
+                foreach (var vacancyUrl in urls)
+                {
+                    yield return vacancyUrl;
+                }
+
+                isLast = last;
+                currentCount += 20;
+                pagesCollected++;
+
+                if (!isLast) await Task.Delay(1500, cancellationToken);
+            }
+
+            //Console.WriteLine("Cout: " + allUrls.Count);
+            //foreach (var item in allUrls)
+            //{
+            //    Console.WriteLine(item);
+            //}
         }
-        public async IAsyncEnumerable<Vacancy> ScrapeDetailsAsync(IEnumerable<string> urls, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<Vacancy> ScrapeDetailsAsync(IAsyncEnumerable<string> urls, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var channel = Channel.CreateUnbounded<Vacancy>();
 
             var options = new ParallelOptions
             {
-                MaxDegreeOfParallelism = 10,
+                MaxDegreeOfParallelism = 2,
                 CancellationToken = cancellationToken
             };
-
-            int total = urls.Count();
-            int id = 0;
 
             var backgroundTask = Parallel.ForEachAsync(urls, options, async (url, ct) =>
             {
@@ -208,7 +206,6 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
                     int delayMs = Rnd.Value.Next(2000, 5000);
                     await Task.Delay(delayMs, ct);
 
-                    int currentId = Interlocked.Increment(ref id);
                     var document = await _context.OpenAsync(url, ct);
                     var vacancy = HtmlVacancyPars(document);
 
@@ -218,12 +215,16 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
                         vacancy.SourceName = SourceName;
 
                         await channel.Writer.WriteAsync(vacancy, ct);
-
-                        _logger.LogInformation($"{currentId} out of {total} jobs processed");
                     }
                 }
+
                 catch (Exception ex)
                 {
+                    if (ex is OperationCanceledException || ex is TaskCanceledException)
+                    {
+                        throw;
+                    }
+
                     _logger.LogError(ex, "URL processing error {Url}", url);
                 }
             }).ContinueWith(_ => channel.Writer.Complete());
@@ -233,12 +234,11 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
                 yield return vacancy;
             }
 
-
             await backgroundTask;
         }
         public async IAsyncEnumerable<Vacancy> ScrapeAsync(string? cityOrOption, int? maxPage, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var urls = await ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
+            var urls = ScraperUrlAsync(cityOrOption, maxPage, cancellationToken);
 
             await foreach (var vacancy in ScrapeDetailsAsync(urls, cancellationToken))
             {
