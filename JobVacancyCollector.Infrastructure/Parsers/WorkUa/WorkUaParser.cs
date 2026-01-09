@@ -2,13 +2,13 @@
 using AngleSharp.Dom;
 using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Domain.Models;
-using JobVacancyCollector.Infrastructure.Parsers.Dou.Html;
+using JobVacancyCollector.Infrastructure.Parsers.WorkUa.Html;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
 
-namespace JobVacancyCollector.Infrastructure.Parsers.Dou
+namespace JobVacancyCollector.Infrastructure.Parsers.WorkUa
 {
     public class WorkUaParser : IVacancyScraper
     {
@@ -122,70 +122,58 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
             return GetVacancyId(url);
         }
 
-        public async Task<List<string>> ScraperUrlAsync(string? cityOrOption = "Вся Україна", int? maxPage = null, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<string> ScraperUrlAsync( string? cityOrOption = "Вся Україна", int? maxPage = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            List<string> urls = new List<string>();
-
-            string baseUrl = cityOrOption?.ToLower() switch
+            string normal = cityOrOption?.Trim() ?? "Вся Україна";
+            string baseUrl = normal.ToLower() switch
             {
-                "Вся Україна" => "https://www.work.ua/jobs/",
-                "Дистанційно" => "https://www.work.ua/remote-jobs/",
-                _ => $"https://www.work.ua/jobs-{ToLatinCity(cityOrOption)}/"
+                "вся україна" => "https://www.work.ua/jobs/",
+                "дистанційно" => "https://www.work.ua/jobs-remote/",
+                _ => $"https://www.work.ua/jobs-{ToLatinCity(normal)}/"
             };
 
             int page = 1;
             bool hasVacancies = true;
+            var seenUrls = new HashSet<string>();
 
             while (hasVacancies && (maxPage == null || page <= maxPage))
             {
-                string url = $"{baseUrl}?page={page}";
+                if (cancellationToken.IsCancellationRequested) yield break;
 
-                var document = await _context.OpenAsync(url);
+                string url = $"{baseUrl}?page={page}";
+                var document = await _context.OpenAsync(url, cancellationToken);
                 var cards = document.QuerySelectorAll("div[class*='job-link']");
 
-                if (cards.Length == 0)
-                {
-                    hasVacancies = false;
-
-                    break;
-                }
+                if (cards.Length == 0) break;
 
                 foreach (var card in cards)
                 {
                     var link = card.QuerySelector("h2 a")?.GetAttribute("href");
-
                     if (!string.IsNullOrEmpty(link))
                     {
                         string fullLink = "https://www.work.ua" + link;
-
-                        if (!urls.Contains(fullLink))
-                            urls.Add(fullLink);
-
-                        _logger.LogInformation(fullLink);
+                        if (seenUrls.Add(fullLink))
+                        {
+                            yield return fullLink;
+                        }
                     }
                 }
 
-                _logger.LogInformation($"Page {page} processed. Jobs found: {cards.Length}");
-
+                _logger.LogInformation("Page {page} URLs streamed.", page);
                 page++;
 
-                int delay = Rnd.Value.Next(500, 1500);
-                await Task.Delay(delay, cancellationToken);
+                await Task.Delay(Rnd.Value.Next(500, 1500), cancellationToken);
             }
-
-            return urls;
         }
 
-        public async IAsyncEnumerable<Vacancy> ScrapeDetailsAsync(IEnumerable<string> urls, [EnumeratorCancellation] CancellationToken ct = default)
+        public async IAsyncEnumerable<Vacancy> ScrapeDetailsAsync(IAsyncEnumerable<string> urls, [EnumeratorCancellation] CancellationToken ct = default)
         {
             var channel = Channel.CreateUnbounded<Vacancy>();
-
-            int total = urls.Count();
             int processed = 0;
 
             var backgroundTask = Parallel.ForEachAsync(urls, new ParallelOptions
             {
-                MaxDegreeOfParallelism = 10,
+                MaxDegreeOfParallelism = 2,
                 CancellationToken = ct
             }, async (url, token) =>
             {
@@ -196,20 +184,24 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
                     var document = await _context.OpenAsync(url, token);
                     var vacancy = HtmlVacancyPars(document);
 
-                    int current = Interlocked.Increment(ref processed);
-
                     if (vacancy != null)
                     {
                         vacancy.SourceId = GetVacancyId(url);
                         vacancy.SourceName = SourceName;
-
                         await channel.Writer.WriteAsync(vacancy, token);
                     }
 
-                    _logger.LogInformation("Progress: {current} / {total} processed", current, total);
+                    int current = Interlocked.Increment(ref processed);
+                    _logger.LogInformation("Processed vacancy #{current}: {Url}", current, url);
                 }
+
                 catch (Exception ex)
                 {
+                    if (ex is OperationCanceledException || ex is TaskCanceledException)
+                    {
+                        throw;
+                    }
+
                     _logger.LogError(ex, "Error processing {Url}", url);
                 }
             }).ContinueWith(_ => channel.Writer.Complete());
@@ -218,10 +210,12 @@ namespace JobVacancyCollector.Infrastructure.Parsers.Dou
             {
                 yield return v;
             }
+
+            await backgroundTask;
         }
         public async IAsyncEnumerable<Vacancy> ScrapeAsync(string? cityOrOption, int? maxPage, [EnumeratorCancellation] CancellationToken ct = default)
         {
-            var urls = await ScraperUrlAsync(cityOrOption, maxPage, ct);
+            var urls = ScraperUrlAsync(cityOrOption, maxPage, ct);
 
             await foreach (var vacancy in ScrapeDetailsAsync(urls, ct))
             {
