@@ -84,5 +84,10 @@ namespace JobVacancyCollector.Infrastructure.Persistence.Repositories
         {
             return await _context.Vacancies.FirstOrDefaultAsync(v => v.SourceName == sourceName && v.SourceId == id);
         }
+
+        public async Task<bool> AnyAsync(string sourceName, CancellationToken ct)
+        {
+            return await _context.Vacancies.AnyAsync(v => v.SourceName == sourceName, ct);
+        }
     }
 }
