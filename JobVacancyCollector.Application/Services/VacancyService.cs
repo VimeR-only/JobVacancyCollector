@@ -13,22 +13,28 @@ namespace JobVacancyCollector.Application.Services
         private readonly IVacancyRepository _vacancyRepository;
         private readonly IScraperFactory _scraperFactory;
         private readonly ILogger<VacancyService> _logger;
-        public VacancyService(IVacancyRepository vacancyRepository, IScraperFactory scraperFactory, ILogger<VacancyService> logger)
+        private readonly IScrapingControlService _controlService;
+
+        public VacancyService(IVacancyRepository vacancyRepository, IScraperFactory scraperFactory, ILogger<VacancyService> logger, IScrapingControlService controlService)
         {
             _vacancyRepository = vacancyRepository;
             _scraperFactory = scraperFactory;
             _logger = logger;
+            _controlService = controlService;
         }
 
         public async Task ScrapeAndSaveAsync(string site, string? city, int? maxPage, CancellationToken ct)
         {
             var scraper = _scraperFactory.GetScraper(site);
 
+            var linkedToken = _controlService.GetLinkedToken(scraper.SourceName, ct);
+
             var batch = new List<Vacancy>();
             const int batchSize = 50;
 
-            await foreach (var vacancy in scraper.ScrapeAsync(city, maxPage, ct))
+            await foreach (var vacancy in scraper.ScrapeAsync(city, maxPage, linkedToken))
             {
+
                 if (await _vacancyRepository.ExistsAsync(scraper.SourceName, vacancy.SourceId)) continue;
 
                 batch.Add(vacancy);
@@ -44,39 +50,28 @@ namespace JobVacancyCollector.Application.Services
             }
 
             if (batch.Any()) await _vacancyRepository.AddRangeAsync(batch);
-
-            //_logger.LogInformation($"Everything is saved {batch.Count}");
         }
 
         public async Task<bool> ScrapeNewAsync(string site, string? city, int? maxPage, CancellationToken ct = default)
         {
             var scraper = _scraperFactory.GetScraper(site);
 
-            var allUrls = await scraper.ScraperUrlAsync(city, maxPage, ct);
-            if (!allUrls.Any()) return false;
-
-            var existId = (await _vacancyRepository.GetAllIdsAsync(scraper.SourceName)).ToHashSet();
-
-            var newVacanciesUrl = allUrls
-                .Where(url => {
-                    var id = scraper.GetIdFromUrl(url);
-                    return !existId.Contains(id);
-                });
-
-            if (!newVacanciesUrl.Any()) return false;
+            var linkedToken = _controlService.GetLinkedToken(scraper.SourceName, ct);
 
             var batch = new List<Vacancy>();
             const int batchSize = 50;
 
-            await foreach (var vacancy in scraper.ScrapeDetailsAsync(newVacanciesUrl, ct))
+            await foreach (var vacancy in scraper.ScrapeAsync(city, maxPage, linkedToken))
             {
+                if (await _vacancyRepository.ExistsAsync(scraper.SourceName, vacancy.SourceId)) continue;
+
                 batch.Add(vacancy);
 
                 if (batch.Count >= batchSize)
                 {
                     await _vacancyRepository.AddRangeAsync(batch);
 
-                    _logger.LogInformation($"Saved a pack of {batch.Count} vacancies");
+                    _logger.LogInformation($"Saved a pack of {batch.Count} vacancies for {site}");
 
                     batch.Clear();
                 }
@@ -90,14 +85,16 @@ namespace JobVacancyCollector.Application.Services
         public async Task<bool> ScrapeNotExistentDeleteAsync(string site, string? city, int? maxPage, CancellationToken ct = default)
         {
             var scraper = _scraperFactory.GetScraper(site);
+            var currentIds = new HashSet<string>();
 
-            var currentUrls = await scraper.ScraperUrlAsync(city, maxPage, ct);
-            if (!currentUrls.Any()) return false;
+            var linkedToken = _controlService.GetLinkedToken(scraper.SourceName, ct);
 
-            var currentIds = currentUrls.Select(url => scraper.GetIdFromUrl(url)).ToHashSet();
+            await foreach (var url in scraper.ScraperUrlAsync(city, maxPage, linkedToken).WithCancellation(linkedToken))
+            {
+                currentIds.Add(scraper.GetIdFromUrl(url));
+            }
 
             var dbIds = (await _vacancyRepository.GetAllIdsAsync(scraper.SourceName)).ToHashSet();
-
             var idsToRemove = dbIds.Where(id => !currentIds.Contains(id)).ToList();
 
             if (!idsToRemove.Any()) return false;
