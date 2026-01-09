@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10">
       <PrivateAssets>all</PrivateAssets>
@@ -22,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\JobVacancyCollector.Application\JobVacancyCollector.Application.csproj" />
     <ProjectReference Include="..\JobVacancyCollector.Infrastructure\JobVacancyCollector.Infrastructure.csproj" />
+    <ProjectReference Include="..\JobVacancyCollector.Worker\JobVacancyCollector.Worker.csproj" />
   </ItemGroup>
 
 </Project>

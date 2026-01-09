@@ -1,7 +1,9 @@
 ﻿using JobVacancyCollector.Application.Abstractions.Scrapers;
 using JobVacancyCollector.Application.Interfaces;
+using JobVacancyCollector.Domain.Commands;
 using JobVacancyCollector.Domain.Models;
 using JobVacancyCollector.Infrastructure.Parsers;
+using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.IO;
@@ -13,10 +15,12 @@ namespace JobVacancyCollector.Controllers
     public class VacancyController : ControllerBase
     {
         private readonly IVacancyService _vacancyService;
+        private readonly IPublishEndpoint _publishEndpoint;
 
-        public VacancyController(IVacancyService vacancyService)
+        public VacancyController(IVacancyService vacancyService, IPublishEndpoint publishEndpoint)
         {
             _vacancyService = vacancyService;
+            _publishEndpoint = publishEndpoint;
         }
 
         [HttpGet]
@@ -30,61 +34,46 @@ namespace JobVacancyCollector.Controllers
         }
 
         [HttpPost("scrape")]
-        public IActionResult Scrape(ScraperSource source, string? city, int? maxPage)
+        public async Task<IActionResult> Scrape(ScraperSource source, string? city, int? maxPage)
         {
-            var scopeFactory = HttpContext.RequestServices.GetRequiredService<IServiceScopeFactory>();
-
-            _ = Task.Run(async () =>
+            await _publishEndpoint.Publish(new StartScrapingCommand
             {
-                using (var scope = scopeFactory.CreateScope())
-                {
-                    var scopedService = scope.ServiceProvider.GetRequiredService<IVacancyService>();
-
-                    try
-                    {
-                        await scopedService.ScrapeAndSaveAsync(source.ToString(), city, maxPage, CancellationToken.None);
-                        
-                        Console.WriteLine($"Parsing {source} successfully completed.");
-                    }
-                    catch (Exception ex)
-                    {
-                        var logger = scope.ServiceProvider.GetRequiredService<ILogger<VacancyController>>();
-                        logger.LogError(ex, "Parsing error");
-                    }
-                }
+                Site = source.ToString(),
+                City = city,
+                MaxPages = maxPage ?? 5
             });
 
-            return Accepted(new { message = "Parsing is running in a separate thread" });
+            return Accepted(new { message = $"Task for {source} added to RabbitMQ queue" });
         }
 
         [HttpPost("scrape-multiple")]
-        public IActionResult ScrapeMultiple([FromQuery] List<ScraperSource> sources, string? city, int? maxPage)
+        public async Task<IActionResult> ScrapeMultiple([FromQuery] List<ScraperSource> sources, string? city, int? maxPage)
         {
-            var scopeFactory = HttpContext.RequestServices.GetRequiredService<IServiceScopeFactory>();
-
             foreach (var source in sources)
             {
-                var siteName = source.ToString();
-
-                _ = Task.Run(async () =>
+                await _publishEndpoint.Publish(new StartScrapingCommand
                 {
-                    using var scope = scopeFactory.CreateScope();
-
-                    var scopedService = scope.ServiceProvider.GetRequiredService<IVacancyService>();
-
-                    try
-                    {
-                        await scopedService.ScrapeAndSaveAsync(siteName, city, maxPage, CancellationToken.None);
-                    }
-                    catch (Exception ex)
-                    {
-                        var logger = scope.ServiceProvider.GetRequiredService<ILogger<VacancyController>>();
-                        logger.LogError(ex, "Parsing error {Site}", siteName);
-                    }
+                    Site = source.ToString(),
+                    City = city,
+                    MaxPages = maxPage ?? 5
                 });
             }
 
-            return Accepted(new { message = $"Parallel parsing started for: {string.Join(", ", sources)}" });
+            return Accepted(new { message = $"Commands for {sources.Count} sites queued" });
+        }
+
+        [HttpPost("stop")]
+        public async Task<IActionResult> ScrapeStop([FromQuery] List<ScraperSource> sources)
+        {
+            foreach (var source in sources)
+            {
+                await _publishEndpoint.Publish(new StopScrapingCommand
+                {
+                    Site = source.ToString(),
+                });
+            }
+
+            return Accepted(new { message = $"Command to stop parsing {sources.Count} queued sites" });
         }
 
         [HttpPost("clear-db")]
