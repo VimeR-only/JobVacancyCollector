@@ -79,7 +79,8 @@ API Documentation (Swagger)
 
 The API allows you to trigger scrapers manually and monitor the data flow.
 
-<img width="1313" height="607" alt="image" src="https://github.com/user-attachments/assets/58a2342b-aca2-4a76-b7cf-d1941070bbf0" />
+<img width="1292" height="640" alt="image" src="https://github.com/user-attachments/assets/7a82ccea-fba6-4bbd-9b24-4cabf338fe70" />
+
 
 ---
 
