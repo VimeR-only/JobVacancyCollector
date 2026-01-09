@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.7" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JobVacancyCollector.Application\JobVacancyCollector.Application.csproj" />
+    <ProjectReference Include="..\JobVacancyCollector.Domain\JobVacancyCollector.Domain.csproj" />
+    <ProjectReference Include="..\JobVacancyCollector.Infrastructure\JobVacancyCollector.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
