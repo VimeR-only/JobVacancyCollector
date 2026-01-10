@@ -40,6 +40,7 @@ services:
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=Test;Username=postgres;Password=admin
       - RabbitMq__Host=rabbitmq
       - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Development
     ports:
       - "8080:8080"
       
