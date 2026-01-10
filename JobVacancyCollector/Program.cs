@@ -37,7 +37,13 @@ namespace JobVacancyCollector
             {
                 x.UsingRabbitMq((context, cfg) =>
                 {
-                    cfg.Host("localhost");
+                    var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
+                    
+                    cfg.Host(rabbitHost, "/", h =>
+                    {
+                        h.Username("guest");
+                        h.Password("guest");
+                    });
                 });
             });
 
