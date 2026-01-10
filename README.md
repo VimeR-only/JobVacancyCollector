@@ -46,7 +46,7 @@ The easiest way to spin up the entire infrastructure (API, Worker, Database, Rab
 ### 2. Launch the Environment
 From the project root directory, run:
 ```bash
-docker-compose up -d --build
+docker-compose up -d
 ```
 
 ### 3. Accessing the Services
