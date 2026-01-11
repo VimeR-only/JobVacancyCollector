@@ -41,7 +41,7 @@ The system follows a clean, multi-layered architecture:
 The easiest way to spin up the entire infrastructure (API, Worker, Database, RabbitMQ) is using **Docker Compose**.
 
 ### 1. Prerequisites
-- **Docker Desktop** installed and running.
+- **Docker** installed and running.
 
 ### 2. Launch the Environment
 From the project root directory, run:
